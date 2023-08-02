@@ -79,7 +79,3 @@ void setupWebServer() {
     }
   }
 }
-
-void loop() {
-  // Your main code here (if any).
-}
