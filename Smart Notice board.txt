@@ -1,0 +1,85 @@
+#include <Adafruit_GFX.h>
+#include <Adafruit_LEDBackpack.h>
+#include <ESP8266WiFi.h>
+#include <WiFiClient.h>
+
+#define LED_MATRIX_ADDR 0x70 // I2C address of the LED matrix
+
+Adafruit_8x8matrix matrix = Adafruit_8x8matrix();
+
+const char* ssid = "Your_WiFi_SSID";
+const char* password = "Your_WiFi_Password";
+
+void setup() {
+  matrix.begin(LED_MATRIX_ADDR);
+  matrix.clear();
+  matrix.writeDisplay();
+  
+  Serial.begin(115200);
+  delay(10);
+  
+  WiFi.begin(ssid, password);
+  
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  
+  Serial.println("");
+  Serial.println("WiFi connected");
+  
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());
+  
+  setupWebServer();
+}
+
+void setupWebServer() {
+  WiFiServer server(80);
+  server.begin();
+  
+  Serial.println("Web server started");
+  
+  while (true) {
+    WiFiClient client = server.available();
+    
+    if (client) {
+      Serial.println("New client connected");
+      String request = client.readStringUntil('\r');
+      client.flush();
+      
+      if (request.indexOf("/message") != -1) {
+        String message = request.substring(request.indexOf("=") + 1, request.indexOf(" "));
+        message.replace("+", " ");
+        
+        matrix.clear();
+        matrix.setTextSize(1);
+        matrix.setTextColor(LED_ON);
+        matrix.setCursor(0, 0);
+        matrix.print(message);
+        matrix.writeDisplay();
+      }
+      
+      client.println("HTTP/1.1 200 OK");
+      client.println("Content-Type: text/html");
+      client.println("");
+      client.println("<!DOCTYPE HTML>");
+      client.println("<html>");
+      client.println("<body>");
+      client.println("<h1>Wireless Notice Board</h1>");
+      client.println("<form action=\"/message\">");
+      client.println("<input type=\"text\" name=\"message\">");
+      client.println("<input type=\"submit\" value=\"Set Message\">");
+      client.println("</form>");
+      client.println("</body>");
+      client.println("</html>");
+      delay(1);
+      client.flush();
+      client.stop();
+    }
+  }
+}
+
+void loop() {
+  // Your main code here (if any).
+}
